@@ -1,11 +1,7 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import "./App.css";
-import { saveAs } from "file-saver";
-
-// Import the editor styles
 import "@pqina/pintura/pintura.css";
-
-// Import the editor functionality
+import { PinturaEditor } from "@pqina/react-pintura";
 import {
   createDefaultImageReader,
   createDefaultImageWriter,
@@ -23,13 +19,8 @@ import {
   plugin_finetune_defaults,
 } from "@pqina/pintura";
 
-// Import the editor component from `react-pintura`
-import { PinturaEditor } from "@pqina/react-pintura";
-
-// Register the plugins with Pintura Image Editor
 setPlugins(plugin_crop, plugin_finetune, plugin_annotate);
 
-// Create our editor configuration
 const editorConfig = {
   imageReader: createDefaultImageReader(),
   imageWriter: createDefaultImageWriter(),
@@ -46,25 +37,25 @@ const editorConfig = {
   },
 };
 
-const dataURLToBlob = (dataURL) => {
-  try {
-    const byteString = atob(dataURL.split(",")[1]);
-    const arrayBuffer = new ArrayBuffer(byteString.length);
-    const uint8Array = new Uint8Array(arrayBuffer);
-    for (let i = 0; i < byteString.length; i++) {
-      uint8Array[i] = byteString.charCodeAt(i);
-    }
-    const mimeString = dataURL.split(",")[0].split(":")[1].split(";")[0];
-    return new Blob([uint8Array], { type: mimeString });
-  } catch (error) {
-    console.error("Error decoding data URL:", error);
-    return null; // Return null to indicate failure
-  }
+const downloadFile = (file) => {
+  const link = document.createElement('a');
+  link.style.display = 'none';
+  link.href = URL.createObjectURL(file);
+  link.download = file.name;
+
+  document.body.appendChild(link);
+  link.click();
+
+  setTimeout(() => {
+    URL.revokeObjectURL(link.href);
+    link.parentNode.removeChild(link);
+  }, 0);
 };
 
 function App() {
   const [img, setImg] = useState("");
   const [theme, setTheme] = useState("light");
+
   const changeImg = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -76,45 +67,34 @@ function App() {
     }
   };
 
-  const downloadImage = () => {
-    if (img) {
-      const blob = dataURLToBlob(img);
-      if (blob) {
-        const objectURL = URL.createObjectURL(blob);
-        saveAs(objectURL, "edited-image.png");
-        URL.revokeObjectURL(objectURL); // Clean up the object URL after use
-      } else {
-        console.error("Failed to create Blob from data URL");
-      }
-    } else {
-      console.error("No image data available");
-    }
-  };
-
-  const handleImageEdited = ({ dest }) => {
-    console.log(img)
-    setImg(URL.createObjectURL(dest));
-
-    console.log(img)
+  const handleEditorProcess = (imageState) => {
+    const blob = imageState.dest;
+    const file = new File([blob], "edited-image.png", { type: blob.type });
+    downloadFile(file);
   };
 
   return (
-    <div
-      className={`w-[100vw] h-[100vh] bg-blue-300 dark:bg-blue-700 flex items-center justify-center ${theme}`}
-    >
+    <div className={`w-[100vw] h-[100vh] bg-blue-300 dark:bg-blue-700 flex items-center justify-center ${theme}`}>
       <div className="absolute top-3 left-3 text-5xl font-mono">
-        PhotoFinesse <span className="text-xl">UI Image Editor</span>
+        PhotoFinesse 
       </div>
-      <div className="flex  w-[80vw] h-[70vh] bg-white dark:bg-black p-6 rounded-lg">
-        <div className=" w-full flex flex-col items-center">
+      <div className="flex w-[80vw] h-[70vh] bg-white dark:bg-black p-6 rounded-lg mt-8">
+        <div className="w-full flex flex-col items-center">
           <div className="w-full h-full">
-            <PinturaEditor
-              {...editorConfig}
-              src={img}
-              imageCropAspectRatio={1}
-              onLoad={(res) => console.log("load image", res)}
-              onProcess={handleImageEdited}
-            />
+            {img ? (
+              <PinturaEditor
+                {...editorConfig}
+                src={img}
+                imageCropAspectRatio={1}
+                onLoad={(res) => console.log("load image", res)}
+                onProcess={handleEditorProcess}
+              />
+            ) :(
+              <div className="flex justify-center">
+                <img src="https://as2.ftcdn.net/v2/jpg/04/70/29/97/1000_F_470299797_UD0eoVMMSUbHCcNJCdv2t8B2g1GVqYgs.jpg" className="w-[60vw] h-[50vh]" alt="" />
+              </div>
+              
+            )}
           </div>
 
           <div className="grid w-full max-w-xs items-center gap-1.5 grid-flow-col">
@@ -129,12 +109,7 @@ function App() {
                 onChange={changeImg}
               />
             </div>
-            <button
-              className="cursor-pointer transition-all bg-blue-500 text-white px-8 py-2 mb-[-20px] rounded-lg border-blue-600 border-b-[4px] hover:brightness-110 hover:-translate-y-[1px] hover:border-b-[6px] active:border-b-[2px] active:brightness-90 active:translate-y-[2px]"
-              onClick={downloadImage}
-            >
-              Save Img
-            </button>
+            
           </div>
         </div>
       </div>
